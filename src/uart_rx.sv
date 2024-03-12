@@ -82,7 +82,7 @@ assign rx_do_sample = (rx_sample_cntr[15:0] == 1'b0);
 reg rx_data_9th_bit;
 always @ (posedge clk) begin
   if( ~nrst ) begin
-    rx_data_9th_bit = 1'b0;
+    rx_data_9th_bit <= 1'b0;
     rx_busy <= 1'b0;
     rx_sample_cntr <= (BAUD_DIVISOR_2 - 1'b1);
     {rx_data[7:0],rx_data_9th_bit} <= 0;
