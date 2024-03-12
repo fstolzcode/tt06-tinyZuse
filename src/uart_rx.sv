@@ -156,7 +156,7 @@ module delay #( parameter
 
 endmodule
 
-module edge_detect #( parameter
+module edge_detect #(
   parameter WIDTH = 1
 )(
   input clk,
