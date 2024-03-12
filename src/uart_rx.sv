@@ -138,7 +138,7 @@ module delay #( parameter
   output [WIDTH-1:0] out
 );
 
-  reg [LENGTH:1][WIDTH-1:0] data = 0;
+  reg [WIDTH-1:0] data [LENGTH:1] = 0;
 
   always @(posedge clk) begin
     integer i;
@@ -146,18 +146,18 @@ module delay #( parameter
       data <= 0;
     end else if( ena ) begin
       for( i=LENGTH-1; i>0; i=i-1 ) begin
-        data[i+1][WIDTH-1:0] <= data[i][WIDTH-1:0];
+        data[i+1] <= data[i];
       end
-      data[1][WIDTH-1:0] <= in[WIDTH-1:0];
+      data[1] <= in;
     end
   end
 
-  assign out[WIDTH-1:0] = data[LENGTH][WIDTH-1:0];
+  assign out = data[LENGTH];
 
 endmodule
 
 module edge_detect #( parameter
-  bit [7:0] WIDTH = 1
+  parameter WIDTH = 1
 )(
   input clk,
   input anrst,
