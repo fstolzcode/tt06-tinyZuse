@@ -16,7 +16,6 @@ module tt_um_example (
     input  wire       rst_n     // reset_n - low to reset
 );
 
-assign uo_out  = ui_in + uio_in;  // Example: ou_out is the sum of ui_in and uio_in
 assign uo_out[0] = 0;
 assign uo_out[1] = 0;
 assign uo_out[2] = 0;
