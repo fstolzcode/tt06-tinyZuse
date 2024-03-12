@@ -94,7 +94,7 @@ module alu_b (
     input [16:0] a,
     input [15:0] b,
     input c_in,
-    output [16:0] out,
+    output [15:0] out,
     output c_out
 );
     wire [16:0] b_ex = {1'b0,b[15:0]};
@@ -102,10 +102,10 @@ module alu_b (
     assign out[0] = a[0] ^ b_ex[0] ^ c_in;
     assign c[0] = (a[0] & b_ex[0]) | (a[0] & c_in) | (b_ex[0] & c_in);
     genvar i;
-    generate for(i = 1; i < 17; i = i + 1) begin
+    generate for(i = 1; i < 16; i = i + 1) begin
       assign out[i] = a[i] ^ b_ex[i] ^ c[i-1];
       assign c[i] = (a[i] & b_ex[i]) | (a[i] & c[i-1]) | (b_ex[i] & c[i-1]);
     end
-      assign c_out = c[16];
+      assign c_out = (a[16] & b_ex[16]) | (a[16] & c[15]) | (b_ex[16] & c[15]);
     endgenerate
 endmodule

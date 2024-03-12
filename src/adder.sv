@@ -51,6 +51,7 @@ wire [15:0] be; // one front
 
 reg alu_a_c_in;
 reg alu_a_c_out;
+reg reg_alu_c_out;
 alu_a alu_a_inst(aa,ab,alu_a_c_in,ae,reg_alu_c_out);
 
 reg [15:0] bb_shift_in;
@@ -61,6 +62,7 @@ bb_shifter bb_shift_ins(bb_shift_in,bb_shift_amount,bb_left,bb_shift_out);
 
 reg alu_b_c_in;
 reg alu_b_c_out;
+reg alu_b_cout;
 alu_b alu_b_inst(ba,bb,alu_b_c_in,be,alu_b_cout);
 
 always @ (posedge clk)
