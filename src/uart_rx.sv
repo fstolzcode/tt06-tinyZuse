@@ -47,7 +47,7 @@ module uart_rx #( parameter
   input rxd
 );
 
-bit [15:0] BAUD_DIVISOR_2 = (CLK_HZ / BAUD) / 2;
+parameter BAUD_DIVISOR_2 = (CLK_HZ / BAUD) / 2;
 
 // synchronizing external rxd pin to avoid metastability
 wire rxd_s;
@@ -72,16 +72,17 @@ edge_detect rxd_fall_detector (
 );
 
 
-reg [15:0] rx_sample_cntr = (BAUD_DIVISOR_2 - 1'b1);
+reg [15:0] rx_sample_cntr;// = (BAUD_DIVISOR_2 - 1'b1);
 
 wire rx_do_sample;
 assign rx_do_sample = (rx_sample_cntr[15:0] == 1'b0);
 
 
 // {rx_data[7:0],rx_data_9th_bit} is actually a shift register
-reg rx_data_9th_bit = 1'b0;
+reg rx_data_9th_bit;
 always @ (posedge clk) begin
   if( ~nrst ) begin
+    rx_data_9th_bit = 1'b0;
     rx_busy <= 1'b0;
     rx_sample_cntr <= (BAUD_DIVISOR_2 - 1'b1);
     {rx_data[7:0],rx_data_9th_bit} <= 0;
@@ -169,7 +170,7 @@ module edge_detect #(
 );
 
   // data delay line
-  reg [WIDTH-1:0] in_d = '0;
+  reg [WIDTH-1:0] in_d;
   always_ff @(posedge clk or negedge anrst) begin
     if ( ~anrst ) begin
       in_d[WIDTH-1:0] <= '0;

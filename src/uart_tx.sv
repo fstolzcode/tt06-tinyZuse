@@ -50,10 +50,10 @@ module uart_tx #( parameter
   output reg txd = 1'b1
 );
 
-bit [15:0] BAUD_DIVISOR = CLK_HZ / BAUD;
+parameter BAUD_DIVISOR = CLK_HZ / BAUD;
 
-reg [9:0] tx_shifter = 0;
-reg [15:0] tx_sample_cntr = 0;
+reg [9:0] tx_shifter;
+reg [15:0] tx_sample_cntr;
 always @ (posedge clk) begin
   if( (~nrst) || (tx_sample_cntr[15:0] == 0) ) begin
     tx_sample_cntr[15:0] <= (BAUD_DIVISOR-1'b1);
