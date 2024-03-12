@@ -17,7 +17,7 @@ module tt_um_example (
 );
 
 wire clk_10MHZ;
-assign clk_10MHz = clk;
+assign clk_10MHZ = clk;
 
 wire [7:0] rx_data;
 wire rx_valid;
