@@ -38,8 +38,7 @@ uart_tx #(
 
 module uart_tx #( parameter
   CLK_HZ = 200_000_000,
-  BAUD = 9600,
-  bit [15:0] BAUD_DIVISOR = CLK_HZ / BAUD
+  BAUD = 9600
 )(
   input clk,
   input nrst,
@@ -50,6 +49,8 @@ module uart_tx #( parameter
   output reg tx_busy = 1'b0,
   output reg txd = 1'b1
 );
+
+bit [15:0] BAUD_DIVISOR = CLK_HZ / BAUD;
 
 reg [9:0] tx_shifter = 0;
 reg [15:0] tx_sample_cntr = 0;

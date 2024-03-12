@@ -35,8 +35,7 @@ uart_rx #(
 
 module uart_rx #( parameter
   CLK_HZ = 200_000_000,
-  BAUD = 9600,
-  bit [15:0] BAUD_DIVISOR_2 = CLK_HZ / BAUD / 2
+  BAUD = 9600
 )(
   input clk,
   input nrst,
@@ -48,6 +47,7 @@ module uart_rx #( parameter
   input rxd
 );
 
+bit [15:0] BAUD_DIVISOR_2 = (CLK_HZ / BAUD) / 2;
 
 // synchronizing external rxd pin to avoid metastability
 wire rxd_s;
