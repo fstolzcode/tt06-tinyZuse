@@ -134,25 +134,24 @@ module delay #( parameter
   input nrst,
   input ena,
 
-  input [WIDTH-1:0] in,
-  output [WIDTH-1:0] out
+  input  wire in,
+  output  wire out
 );
 
-  reg [WIDTH-1:0] data [LENGTH:1] = 0;
+  reg data [1:0];
 
   always @(posedge clk) begin
     integer i;
     if( ~nrst ) begin
-      data <= 0;
+      data[1] <= 0;
+      data[0] <= 0;
     end else if( ena ) begin
-      for( i=LENGTH-1; i>0; i=i-1 ) begin
-        data[i+1] <= data[i];
-      end
-      data[1] <= in;
+      data[1] <= data[0];
+      data[0] <= in;
     end
   end
 
-  assign out = data[LENGTH];
+  assign out = data[1];
 
 endmodule
 
