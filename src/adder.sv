@@ -121,10 +121,10 @@ alu_17bit alu(
 );
 
 
-reg [16:0] alu8_a;
-reg [16:0] alu8_b;
+reg [7:0] alu8_a;
+reg [7:0] alu8_b;
 reg alu8_cin;
-wire [16:0] alu8_out;
+wire [7:0] alu8_out;
 wire alu8_cout;
 alu_8bit alu8(
     .a(alu8_a),
