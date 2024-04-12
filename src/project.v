@@ -48,7 +48,7 @@ uart_rx #(
 .CLK_HZ  (CLK_HZ  )
 ) i_uart_rx(
 .clk          (clk ), // Top level system clock input.
-.resetn       (~reset         ), // Asynchronous active low reset.
+.resetn       (rst_n         ), // Asynchronous active low reset.
 .uart_rxd     (ui_in[3]), // UART Recieve pin.
 .uart_rx_en   (1'b1         ), // Recieve enable
 .uart_rx_break(), // Did we get a BREAK message?
@@ -65,7 +65,7 @@ uart_tx #(
 .CLK_HZ  (CLK_HZ  )
 ) i_uart_tx(
 .clk          (clk ),
-.resetn       (~reset         ),
+.resetn       (rst_n         ),
 .uart_txd     (uo_out[4]),
 .uart_tx_en   (uart_tx_en   ),
 .uart_tx_busy (uart_tx_busy ),
@@ -112,6 +112,17 @@ fpu fpu_inst(
 always @ (posedge clk)
 begin : OUTPUT_LOGIC
   if(reset == 1'b1) begin
+    r1s <= 0;
+    r1e <= 0;
+    r1m <= 0;
+    r2s <= 0;
+    r2e <= 0;
+    r2m <= 0;
+    uart_tx_en <= 0;
+    uart_tx_data <= 0;
+    cnt <= 0;
+    add <= 0;
+    sub <= 0;
     state <= CTRL_IDLE;
   end else begin
       case(state)

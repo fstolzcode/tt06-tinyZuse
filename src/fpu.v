@@ -159,6 +159,23 @@ reg bs;
 always @ (posedge clk)
 begin : OUTPUT_LOGIC
   if(reset == 1'b1) begin
+    aa <= 0;
+    ab <= 0;
+    ba <= 0;
+    operation <= 0;
+    bs <= 0;
+    shifter_in <= 0;
+    shifter_amount <= 0;
+    shifter_left <= 0;
+    alu8_a <= 0;
+    alu8_b <= 0;
+    alu8_cin <= 0;
+    alu_a <= 0;
+    alu_b <= 0;
+    alu_cin <= 0;
+    res_s <= 0;
+    res_e <= 0;
+    res_m <= 0;
     state <= ALU_IDLE;
   end else begin
       case(state)
