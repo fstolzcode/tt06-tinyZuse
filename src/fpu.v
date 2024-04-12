@@ -91,10 +91,13 @@ module fpu(
     input wire reset,
     input wire add,
     input wire sub,
+    input wire reg1_s,
     input [6:0] reg1_e,
     input [14:0] reg1_m,
+    input wire reg2_s,
     input [6:0] reg2_e,
     input [14:0] reg2_m,
+    output reg res_s,
     output reg [6:0] res_e,
     output reg [14:0] res_m,
     output reg idle
@@ -121,10 +124,10 @@ alu_17bit alu(
 );
 
 
-reg [7:0] alu8_a;
-reg [7:0] alu8_b;
+reg [16:0] alu8_a;
+reg [16:0] alu8_b;
 reg alu8_cin;
-wire [7:0] alu8_out;
+wire [16:0] alu8_out;
 wire alu8_cout;
 alu_8bit alu8(
     .a(alu8_a),
@@ -152,6 +155,7 @@ reg[16:0] ba;
 reg[16:0] bb;
 
 reg operation;
+reg bs;
 
 always @ (posedge clk)
 begin : OUTPUT_LOGIC
@@ -162,11 +166,13 @@ begin : OUTPUT_LOGIC
       ALU_IDLE: begin
           idle <= 1;
           if(add == 1'b1) begin
-            operation <= 0;
+            bs <= reg2_s;
+            operation <= (reg1_s == reg2_s) ? 0 : 1;
             state <= ADD0;
           end else if (sub == 1'b1) begin
+            bs <= ~reg2_s;
+            operation <= (reg1_s == reg2_s) ? 1 : 0;
             state <= ADD0;
-            operation <= 1;
           end
       end
       ADD0: begin
@@ -183,6 +189,8 @@ begin : OUTPUT_LOGIC
                 ab <= 0;
                 aa <= reg1_e;
                 
+                res_s <= reg1_s;
+                
                 ba <= {2'b0,reg1_m};
                 shifter_in <= {2'b0,reg2_m};
                 shifter_amount <= alu8_out[7:0];
@@ -193,6 +201,8 @@ begin : OUTPUT_LOGIC
                 // NEGATIVE
                 aa <= 0;
                 ab <= reg2_e;
+                
+                res_s <= bs;
                 
                 ba <= {2'b0,reg2_m};
                 alu8_a <= ~alu8_out;
@@ -210,7 +220,11 @@ begin : OUTPUT_LOGIC
       ADD3: begin
         alu8_a <= aa;
         alu8_b <= ab;
-        if( (alu_out[16] | alu_out [15]) == 1'b1) begin
+        if (alu_out[16] == 1'b1) begin
+            $display("B NEGATIVE SIGN");
+            res_s <= ~res_s;
+        end 
+        if( (alu_out [15]) == 1'b1) begin
             $display("BE>2");
             res_m <= alu_out[15:1];
             alu8_cin <= 1;
@@ -233,6 +247,7 @@ begin : OUTPUT_LOGIC
       end
       SUB0: begin
         if(alu_out[16] == 1'b1) begin
+            res_s <= ~res_s;
              $display("SUB NEGATIVE");
             alu_a <= ~alu_out;
             alu_b <= 1;
