@@ -1,8 +1,8 @@
 ![](../../workflows/gds/badge.svg) ![](../../workflows/docs/badge.svg) ![](../../workflows/test/badge.svg)
 
-# Tiny Tapeout Verilog Project Template
+# tt06-tinyZuse
 
-- [Read the documentation for project](docs/info.md)
+- [You can find the documentation for this project in docs/info.md](docs/info.md)
 
 ## What is Tiny Tapeout?
 
