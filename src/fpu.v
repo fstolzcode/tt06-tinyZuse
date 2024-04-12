@@ -64,23 +64,23 @@ module shifter_17bit (
 
  always @* begin 
     case (amount)
-      5'd0: out = in;
-      5'd1: out = left == 1'b1 ? {in[15:0],1'b0} : {1'b0,in[16:1]};
-      5'd2: out = left == 1'b1 ? {in[14:0],2'b0} : {2'b0,in[16:2]};
-      5'd3: out = left == 1'b1 ? {in[13:0],3'b0} : {3'b0,in[16:3]};
-      5'd4: out = left == 1'b1 ? {in[12:0],4'b0} : {4'b0,in[16:4]};
-      5'd5: out = left == 1'b1 ? {in[11:0],5'b0} : {5'b0,in[16:5]};
-      5'd6: out = left == 1'b1 ? {in[10:0],6'b0} : {6'b0,in[16:6]};
-      5'd7: out = left == 1'b1 ? {in[9:0],7'b0} : {7'b0,in[16:7]};
-      5'd8: out = left == 1'b1 ? {in[8:0],8'b0} : {8'b0,in[16:8]};
-      5'd9: out = left == 1'b1 ? {in[7:0],9'b0} : {9'b0,in[16:9]};
-      5'd10: out = left == 1'b1 ? {in[6:0],10'b0} : {10'b0,in[16:10]};
-      5'd11: out = left == 1'b1 ? {in[5:0],11'b0} : {11'b0,in[16:11]};
-      5'd12: out = left == 1'b1 ? {in[4:0],12'b0} : {12'b0,in[16:12]};
-      5'd13: out = left == 1'b1 ? {in[3:0],13'b0} : {13'b0,in[16:13]};
-      5'd14: out = left == 1'b1 ? {in[2:0],14'b0} : {14'b0,in[16:14]};
-      5'd15: out = left == 1'b1 ? {in[1],15'b0} : {15'b0,in[16:15]};
-      5'd16: out = left == 1'b1 ? {in[0],16'b0} : {16'b0,in[15]};
+      8'd0: out = in;
+      8'd1: out = left == 1'b1 ? {in[15:0],1'b0} : {1'b0,in[16:1]};
+      8'd2: out = left == 1'b1 ? {in[14:0],2'b0} : {2'b0,in[16:2]};
+      8'd3: out = left == 1'b1 ? {in[13:0],3'b0} : {3'b0,in[16:3]};
+      8'd4: out = left == 1'b1 ? {in[12:0],4'b0} : {4'b0,in[16:4]};
+      8'd5: out = left == 1'b1 ? {in[11:0],5'b0} : {5'b0,in[16:5]};
+      8'd6: out = left == 1'b1 ? {in[10:0],6'b0} : {6'b0,in[16:6]};
+      8'd7: out = left == 1'b1 ? {in[9:0],7'b0} : {7'b0,in[16:7]};
+      8'd8: out = left == 1'b1 ? {in[8:0],8'b0} : {8'b0,in[16:8]};
+      8'd9: out = left == 1'b1 ? {in[7:0],9'b0} : {9'b0,in[16:9]};
+      8'd10: out = left == 1'b1 ? {in[6:0],10'b0} : {10'b0,in[16:10]};
+      8'd11: out = left == 1'b1 ? {in[5:0],11'b0} : {11'b0,in[16:11]};
+      8'd12: out = left == 1'b1 ? {in[4:0],12'b0} : {12'b0,in[16:12]};
+      8'd13: out = left == 1'b1 ? {in[3:0],13'b0} : {13'b0,in[16:13]};
+      8'd14: out = left == 1'b1 ? {in[2:0],14'b0} : {14'b0,in[16:14]};
+      8'd15: out = left == 1'b1 ? {in[1],15'b0} : {15'b0,in[16:15]};
+      8'd16: out = left == 1'b1 ? {in[0],16'b0} : {16'b0,in[16]};
     default: out = 0;
     endcase
 end
@@ -106,7 +106,7 @@ module fpu(
 localparam SIZE = 4           ;
 localparam ALU_IDLE  = 4'd0,
 ADD0 = 4'd1,ADD1 = 4'd2,ADD2 = 4'd3,ADD3 = 4'd4,ADD4 = 4'd5,
-ADD5 = 4'd6, ADD6=4'd7, SUB0=4'd8, SUB1 = 4'd9, SUB2=4'd10, SUB3=4'd11;
+ADD5 = 4'd6, SUB0=4'd7, SUB1 = 4'd8, SUB2=4'd9, SUB3=4'd10;
 
 reg   [SIZE-1:0]          state        ;// Seq part of the FSM
 
@@ -152,7 +152,6 @@ reg[7:0] aa;
 reg[7:0] ab;
 
 reg[16:0] ba;
-reg[16:0] bb;
 
 reg operation;
 reg bs;
@@ -187,7 +186,7 @@ begin : OUTPUT_LOGIC
                  $display("POSITIVE");
                 // POSITIVE
                 ab <= 0;
-                aa <= reg1_e;
+                aa <= {reg1_e[6],reg1_e};
                 
                 res_s <= reg1_s;
                 
@@ -200,7 +199,7 @@ begin : OUTPUT_LOGIC
             $display("NEGATIVE");
                 // NEGATIVE
                 aa <= 0;
-                ab <= reg2_e;
+                ab <= {reg2_e[6],reg2_e};
                 
                 res_s <= bs;
                 
@@ -262,8 +261,8 @@ begin : OUTPUT_LOGIC
         end
       end
       SUB1: begin
-         alu8_a <= { aa[6] , aa};
-         alu8_b <= { ab[6] , ab};
+         alu8_a <= aa;
+         alu8_b <= ab;
          alu8_cin <= 0;
          state <= SUB2;
       end
@@ -274,54 +273,54 @@ begin : OUTPUT_LOGIC
         shifter_left <= 1;
         if(alu_out[14] == 1'b1) begin
                alu8_b <= ~8'd0;
-               shifter_amount <= 5'd0;
+               shifter_amount <= 8'd0;
         end else if(alu_out[13] == 1'b1) begin
                 alu8_b <= ~8'd1;
-                shifter_amount <= 5'd1;
+                shifter_amount <= 8'd1;
                 end else if(alu_out[12] == 1'b1) begin
                 alu8_b <= ~8'd2;
-                shifter_amount <= 5'd2;
+                shifter_amount <= 8'd2;
                 end else if(alu_out[11] == 1'b1) begin
                 alu8_b <= ~8'd3;
-                shifter_amount <= 5'd3;
+                shifter_amount <= 8'd3;
                 end else if(alu_out[10] == 1'b1) begin
                 alu8_b <= ~8'd4;
-                shifter_amount <= 5'd4;
+                shifter_amount <= 8'd4;
                 end else if(alu_out[9] == 1'b1) begin
                 alu8_b <= ~8'd5;
-                shifter_amount <= 5'd5;
+                shifter_amount <= 8'd5;
                 end else if(alu_out[8] == 1'b1) begin
                 alu8_b <= ~8'd6;
-                shifter_amount <= 5'd6;
+                shifter_amount <= 8'd6;
                 end else if(alu_out[7] == 1'b1) begin
                 alu8_b <= ~8'd7;
-                shifter_amount <= 5'd7;
+                shifter_amount <= 8'd7;
                 end else if(alu_out[6] == 1'b1) begin
                 alu8_b <= ~8'd8;
-                shifter_amount <= 5'd8;
+                shifter_amount <= 8'd8;
                 end else if(alu_out[5] == 1'b1) begin
                 alu8_b <= ~8'd9;
-                shifter_amount <= 5'd9;
+                shifter_amount <= 8'd9;
                 end else if(alu_out[4] == 1'b1) begin
                 alu8_b <= ~8'd10;
-                shifter_amount <= 5'd10;
+                shifter_amount <= 8'd10;
                 end else if(alu_out[3] == 1'b1) begin
                 alu8_b <= ~8'd11;
-                shifter_amount <= 5'd11;
+                shifter_amount <= 8'd11;
                 end else if(alu_out[2] == 1'b1) begin
                 alu8_b <= ~8'd12;
-                shifter_amount <= 5'd12;
+                shifter_amount <= 8'd12;
                 end else if(alu_out[1] == 1'b1) begin
                 alu8_b <= ~8'd13;
-                shifter_amount <= 5'd13;
+                shifter_amount <= 8'd13;
                 end else if(alu_out[0] == 1'b1) begin
                 alu8_b <= ~8'd14;
-                shifter_amount <= 5'd14;
+                shifter_amount <= 8'd14;
                 end
                 state <= SUB3;
       end
       SUB3: begin
-        res_e <= alu8_out;
+        res_e <= alu8_out[6:0];
         res_m <= shifter_out[14:0];
         state <= ALU_IDLE;
       end
