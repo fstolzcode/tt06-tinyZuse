@@ -84,7 +84,8 @@ wire [6:0] rse;
 wire [14:0] rsm;
 
 localparam CTRL_SIZE = 4;
-localparam CTRL_IDLE  = 4'd0,CTRL_SETR1 = 4'd1,CTRL_SETR2 = 4'd2,CTRL_READR1 = 4'd3,CTRL_READR2 = 4'd4,CTRL_READRS = 4'd5,CTRL_ADD=4'd6,CTRL_SUB=4'd7,CTRL_WAIT=4'd8;
+localparam CTRL_IDLE  = 4'd0,CTRL_SETR1 = 4'd1,CTRL_SETR2 = 4'd2,CTRL_READR1 = 4'd3,CTRL_READR2 = 4'd4,CTRL_READRS = 4'd5,CTRL_ADD=4'd6,CTRL_SUB=4'd7,CTRL_WAIT=4'd8,
+CTRL_READSTAT=4'd9;
 
 reg   [CTRL_SIZE-1:0]          state        ;// Seq part of the FSM
 reg [2:0] cnt;
@@ -92,6 +93,7 @@ reg add;
 reg sub;
 
 wire fpu_idle;
+wire [2:0] flags;
 fpu fpu_inst(
     .clk(clk),
     .reset(reset),
@@ -106,6 +108,9 @@ fpu fpu_inst(
     .res_s(rss),
     .res_e(rse),
     .res_m(rsm),
+    .zero_flag(flags[0]),
+    .overflow_flag(flags[1]),
+    .underflow_flag(flags[2]),
     .idle(fpu_idle)
 );
 
@@ -134,6 +139,7 @@ begin : OUTPUT_LOGIC
             sub <= 0;
             if(uart_rx_valid == 1'b1) begin
                 case(uart_rx_data)
+                    8'b10000000: state <= CTRL_READSTAT;
                     8'b10000001: state <= CTRL_SETR1;
                     8'b10000010: state <= CTRL_SETR2;
                     8'b10000100: state <= CTRL_READR1;
@@ -143,6 +149,17 @@ begin : OUTPUT_LOGIC
                     8'b11000000: state <= CTRL_SUB;
                     default: state <= CTRL_IDLE;
                 endcase
+            end
+      end
+      CTRL_READSTAT: begin
+            if(uart_tx_busy == 1'b1) begin
+                uart_tx_en <= 0;
+            end else if(uart_tx_busy == 1'b0 && cnt == 3'd0) begin
+                uart_tx_data <= {5'b0,flags};
+                uart_tx_en <= 1;
+                cnt <= cnt + 1'b1;
+            end else if(uart_tx_busy == 1'b0 && cnt == 3'd1) begin
+                state <= CTRL_IDLE;
             end
       end
       CTRL_SETR1: begin

@@ -22,7 +22,7 @@ module alu_8bit (
     input [7:0] b,
     input c_in,
     output [7:0] out,
-    output c_out
+    output u
 );
     wire [7:0] c;
     assign out[0] = a[0] ^ b[0] ^ c_in;
@@ -32,7 +32,7 @@ module alu_8bit (
       assign out[i] = a[i] ^ b[i] ^ c[i-1];
       assign c[i] = (a[i] & b[i]) | (a[i] & c[i-1]) | (b[i] & c[i-1]);
     end
-    assign c_out = c[7];
+    assign u = c[5];
     endgenerate
 endmodule
 
@@ -40,8 +40,7 @@ module alu_17bit (
     input [16:0] a,
     input [16:0] b,
     input c_in,
-    output [16:0] out,
-    output c_out
+    output [16:0] out
 );
     wire [16:0] c;
     assign out[0] = a[0] ^ b[0] ^ c_in;
@@ -51,7 +50,6 @@ module alu_17bit (
       assign out[i] = a[i] ^ b[i] ^ c[i-1];
       assign c[i] = (a[i] & b[i]) | (a[i] & c[i-1]) | (b[i] & c[i-1]);
     end
-      assign c_out = c[16];
     endgenerate
 endmodule
 
@@ -100,6 +98,9 @@ module fpu(
     output reg res_s,
     output reg [6:0] res_e,
     output reg [14:0] res_m,
+    output reg zero_flag,
+    output reg overflow_flag,
+    output reg underflow_flag,
     output reg idle
     );
 
@@ -107,7 +108,7 @@ localparam SIZE = 4           ;
 localparam ALU_IDLE  = 4'd0,
 ADD0 = 4'd1,ADD1 = 4'd2,ADD2 = 4'd3,ADD3 = 4'd4,ADD4 = 4'd5,
 ADD5 = 4'd6, SUB0=4'd7, SUB1 = 4'd8, SUB2=4'd9, SUB3=4'd10, 
-ZEROCHECK = 4'd11;
+ZEROCHECK = 4'd11, INFCHECK = 4'd12;
 
 reg   [SIZE-1:0]          state        ;// Seq part of the FSM
 
@@ -115,13 +116,11 @@ reg [16:0] alu_a;
 reg [16:0] alu_b;
 reg alu_cin;
 wire [16:0] alu_out;
-wire alu_cout;
 alu_17bit alu(
     .a(alu_a),
     .b(alu_b),
     .c_in(alu_cin),
-    .out(alu_out),
-    .c_out(alu_cout)
+    .out(alu_out)
 );
 
 
@@ -129,13 +128,13 @@ reg [7:0] alu8_a;
 reg [7:0] alu8_b;
 reg alu8_cin;
 wire [7:0] alu8_out;
-wire alu8_cout;
+wire alu8_u;
 alu_8bit alu8(
     .a(alu8_a),
     .b(alu8_b),
     .c_in(alu8_cin),
     .out(alu8_out),
-    .c_out(alu8_cout)
+    .u(alu8_u)
 );
 
 reg [16:0] shifter_in;
@@ -157,6 +156,8 @@ reg[16:0] ba;
 reg operation;
 reg bs;
 
+reg inf;
+
 always @ (posedge clk)
 begin : OUTPUT_LOGIC
   if(reset == 1'b1) begin
@@ -177,11 +178,16 @@ begin : OUTPUT_LOGIC
     res_s <= 0;
     res_e <= 0;
     res_m <= 0;
+    zero_flag <= 0;
+    overflow_flag <= 0;
+    underflow_flag <= 0;
+    inf <= 0;
     state <= ALU_IDLE;
   end else begin
       case(state)
       ALU_IDLE: begin
           idle <= 1;
+          inf <= 0;
           if(add == 1'b1) begin
             bs <= reg2_s;
             operation <= (reg1_s == reg2_s) ? 0 : 1;
@@ -193,31 +199,47 @@ begin : OUTPUT_LOGIC
           end
       end
       ADD0: begin
+          if (reg1_e == 7'b0111111 || reg2_e == 7'b0111111) begin
+            inf <= 1;
+          end
+          zero_flag <= 0;
+          overflow_flag <= 0;
+          underflow_flag <= 0;
           idle <= 0;
-          alu8_a <= { reg1_e[6] , reg1_e};
-          alu8_b <= { ~reg2_e[6] , ~reg2_e};
+          alu8_a <= { 1'b0 , reg1_e};
+          alu8_b <= { 1'b0 , ~reg2_e};
           alu8_cin <= 1;
           state <= ADD1;
           end
       ADD1: begin
-         if(alu8_out[7] == 1'b0) begin
-                 $display("POSITIVE");
+         if(alu8_out[7] != alu8_u) begin
+            if(alu8_out[7] == 1'b0 && alu8_u == 1'b1) begin
+                overflow_flag <= 1;
+            end else if(alu8_out[7] == 1'b1 && alu8_u == 1'b0) begin
+                underflow_flag <= 1;
+            end
+         end
+         if (alu8_out[6:0] == 7'b0111111) begin
+            inf <= 1;
+        end
+         if(alu8_out[6] == 1'b0) begin
+                $display("POSITIVE");
                 // POSITIVE
                 ab <= 0;
-                aa <= {reg1_e[6],reg1_e};
+                aa <= { 1'b0,reg1_e};
                 
                 res_s <= reg1_s;
                 
                 ba <= {2'b0,reg1_m};
                 shifter_in <= {2'b0,reg2_m};
-                shifter_amount <= alu8_out[7:0];
+                shifter_amount <= {1'b0,alu8_out[6:0]};
                 shifter_left <= 0;
                 state <= ADD2;
             end else begin
             $display("NEGATIVE");
                 // NEGATIVE
                 aa <= 0;
-                ab <= {reg2_e[6],reg2_e};
+                ab <= { 1'b0,reg2_e};
                 
                 res_s <= bs;
                 
@@ -253,12 +275,15 @@ begin : OUTPUT_LOGIC
         state <= ADD4;
       end
       ADD4: begin
+        if (alu8_out[6:0] == 7'b0111111) begin
+            inf <= 1;
+        end
         res_e <= alu8_out[6:0];
         state <= ZEROCHECK;
       end
       ADD5: begin
          shifter_in <= {2'b0,reg1_m};
-         shifter_amount <= alu8_out[7:0];
+         shifter_amount <= {1'b0,alu8_out[6:0]};
          shifter_left <= 0;
          state <= ADD2;
       end
@@ -285,66 +310,87 @@ begin : OUTPUT_LOGIC
          state <= SUB2;
       end
       SUB2: begin
-        alu8_a <= alu8_out;
+        if (alu8_out[6:0] == 7'b0111111) begin
+            inf <= 1;
+        end
+        alu8_a <= {1'b0,alu8_out[6:0]};
         alu8_cin <= 1;
         shifter_in <= alu_out;
         shifter_left <= 1;
         if(alu_out[14] == 1'b1) begin
-               alu8_b <= ~8'd0;
+               alu8_b <= {1'b0,~7'd0};
                shifter_amount <= 8'd0;
         end else if(alu_out[13] == 1'b1) begin
-                alu8_b <= ~8'd1;
+                alu8_b <= {1'b0,~7'd1};
                 shifter_amount <= 8'd1;
                 end else if(alu_out[12] == 1'b1) begin
-                alu8_b <= ~8'd2;
+                alu8_b <= {1'b0,~7'd2};
                 shifter_amount <= 8'd2;
                 end else if(alu_out[11] == 1'b1) begin
-                alu8_b <= ~8'd3;
+                alu8_b <= {1'b0,~7'd3};
                 shifter_amount <= 8'd3;
                 end else if(alu_out[10] == 1'b1) begin
-                alu8_b <= ~8'd4;
+                alu8_b <= {1'b0,~7'd4};
                 shifter_amount <= 8'd4;
                 end else if(alu_out[9] == 1'b1) begin
-                alu8_b <= ~8'd5;
+                alu8_b <= {1'b0,~7'd5};
                 shifter_amount <= 8'd5;
                 end else if(alu_out[8] == 1'b1) begin
-                alu8_b <= ~8'd6;
+                alu8_b <= {1'b0,~7'd6};
                 shifter_amount <= 8'd6;
                 end else if(alu_out[7] == 1'b1) begin
-                alu8_b <= ~8'd7;
+                alu8_b <= {1'b0,~7'd7};
                 shifter_amount <= 8'd7;
                 end else if(alu_out[6] == 1'b1) begin
-                alu8_b <= ~8'd8;
+                alu8_b <= {1'b0,~7'd8};
                 shifter_amount <= 8'd8;
                 end else if(alu_out[5] == 1'b1) begin
-                alu8_b <= ~8'd9;
+                alu8_b <= {1'b0,~7'd9};
                 shifter_amount <= 8'd9;
                 end else if(alu_out[4] == 1'b1) begin
-                alu8_b <= ~8'd10;
+                alu8_b <= {1'b0,~7'd10};
                 shifter_amount <= 8'd10;
                 end else if(alu_out[3] == 1'b1) begin
-                alu8_b <= ~8'd11;
+                alu8_b <= {1'b0,~7'd11};
                 shifter_amount <= 8'd11;
                 end else if(alu_out[2] == 1'b1) begin
-                alu8_b <= ~8'd12;
+                alu8_b <= {1'b0,~7'd12};
                 shifter_amount <= 8'd12;
                 end else if(alu_out[1] == 1'b1) begin
-                alu8_b <= ~8'd13;
+                alu8_b <= {1'b0,~7'd13};
                 shifter_amount <= 8'd13;
                 end else if(alu_out[0] == 1'b1) begin
-                alu8_b <= ~8'd14;
+                alu8_b <= {1'b0,~7'd14};
                 shifter_amount <= 8'd14;
                 end
                 state <= SUB3;
       end
       SUB3: begin
+        if(alu8_out[7] != alu8_u) begin
+            if(alu8_out[7] == 1'b0 && alu8_u == 1'b1) begin
+                overflow_flag <= 1;
+            end else if(alu8_out[7] == 1'b1 && alu8_u == 1'b0) begin
+                underflow_flag <= 1;
+            end
+        end
+        if (alu8_out[6:0] == 7'b0111111) begin
+            inf <= 1;
+        end
         res_e <= alu8_out[6:0];
         res_m <= shifter_out[14:0];
         state <= ZEROCHECK;
       end
       ZEROCHECK: begin
         if( |res_m != 1'b1) begin
+            zero_flag <= 1;
             res_e <= 7'b1000000;
+            res_m <= 15'b100000000000000;
+        end
+        state <= INFCHECK;
+      end
+      INFCHECK: begin
+        if( inf == 1'b1) begin
+            res_e <= 7'b0111111;
             res_m <= 15'b100000000000000;
         end
         state <= ALU_IDLE;
