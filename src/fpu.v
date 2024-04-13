@@ -77,7 +77,7 @@ module shifter_17bit (
       8'd12: out = left == 1'b1 ? {in[4:0],12'b0} : {12'b0,in[16:12]};
       8'd13: out = left == 1'b1 ? {in[3:0],13'b0} : {13'b0,in[16:13]};
       8'd14: out = left == 1'b1 ? {in[2:0],14'b0} : {14'b0,in[16:14]};
-      8'd15: out = left == 1'b1 ? {in[1],15'b0} : {15'b0,in[16:15]};
+      8'd15: out = left == 1'b1 ? {in[1:0],15'b0} : {15'b0,in[16:15]};
       8'd16: out = left == 1'b1 ? {in[0],16'b0} : {16'b0,in[16]};
     default: out = 0;
     endcase
