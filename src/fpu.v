@@ -86,7 +86,7 @@ module shifter_17bit (
 end
 endmodule
 
-module fpu_try2(
+module fpu(
     input wire clk,
     input wire reset,
     input wire add,
