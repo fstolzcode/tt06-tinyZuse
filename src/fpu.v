@@ -86,7 +86,7 @@ module shifter_17bit (
 end
 endmodule
 
-module fpu(
+module fpu_try2(
     input wire clk,
     input wire reset,
     input wire add,
@@ -106,7 +106,8 @@ module fpu(
 localparam SIZE = 4           ;
 localparam ALU_IDLE  = 4'd0,
 ADD0 = 4'd1,ADD1 = 4'd2,ADD2 = 4'd3,ADD3 = 4'd4,ADD4 = 4'd5,
-ADD5 = 4'd6, SUB0=4'd7, SUB1 = 4'd8, SUB2=4'd9, SUB3=4'd10;
+ADD5 = 4'd6, SUB0=4'd7, SUB1 = 4'd8, SUB2=4'd9, SUB3=4'd10, 
+ZEROCHECK = 4'd11;
 
 reg   [SIZE-1:0]          state        ;// Seq part of the FSM
 
@@ -253,7 +254,7 @@ begin : OUTPUT_LOGIC
       end
       ADD4: begin
         res_e <= alu8_out[6:0];
-        state <= ALU_IDLE;
+        state <= ZEROCHECK;
       end
       ADD5: begin
          shifter_in <= {2'b0,reg1_m};
@@ -339,6 +340,13 @@ begin : OUTPUT_LOGIC
       SUB3: begin
         res_e <= alu8_out[6:0];
         res_m <= shifter_out[14:0];
+        state <= ZEROCHECK;
+      end
+      ZEROCHECK: begin
+        if( |res_m != 1'b1) begin
+            res_e <= 7'b1000000;
+            res_m <= 15'b100000000000000;
+        end
         state <= ALU_IDLE;
       end
       default: begin
