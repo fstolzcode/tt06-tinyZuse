@@ -404,6 +404,9 @@ begin : OUTPUT_LOGIC
         alu8_a <= 0;
         alu8_b <= 0;
         alu8_cin <= 0;
+        alu_a <= 0;
+        alu_b <= 0;
+        alu_cin <= 0;
         if (reg1_e == 7'b0111111 || reg2_e == 7'b0111111) begin
             inf <= 1;
         end
@@ -427,7 +430,7 @@ begin : OUTPUT_LOGIC
         end else begin
             state <= MUL1;
         end
-        alu_a <= alu8_out[3:0] == 4'd0 ? {2'b0,reg1_m} : {1'b0,alu_out[16:1]};
+        alu_a <= {1'b0,alu_out[16:1]};
         alu_b <= reg1_m[alu8_out[3:0]] == 1'b1 ? {2'b0, reg2_m} : 17'b0;
         alu_cin <= 0;
         alu8_a <= alu8_out;
