@@ -89,6 +89,7 @@ module fpu(
     input wire reset,
     input wire add,
     input wire sub,
+    input wire mul,
     input wire reg1_s,
     input [6:0] reg1_e,
     input [14:0] reg1_m,
@@ -104,11 +105,12 @@ module fpu(
     output reg idle
     );
 
-localparam SIZE = 4           ;
-localparam ALU_IDLE  = 4'd0,
-ADD0 = 4'd1,ADD1 = 4'd2,ADD2 = 4'd3,ADD3 = 4'd4,ADD4 = 4'd5,
-ADD5 = 4'd6, SUB0=4'd7, SUB1 = 4'd8, SUB2=4'd9, SUB3=4'd10, 
-ZEROCHECK = 4'd11, INFCHECK = 4'd12;
+localparam SIZE = 5           ;
+localparam ALU_IDLE  = 5'd0,
+ADD0 = 5'd1,ADD1 = 5'd2,ADD2 = 5'd3,ADD3 = 5'd4,ADD4 = 5'd5,
+ADD5 = 5'd6, SUB0=5'd7, SUB1 = 5'd8, SUB2=5'd9, SUB3=5'd10, 
+ZEROCHECK = 5'd11, INFCHECK = 5'd12,
+MUL0 = 5'd13, MUL1 = 5'd14, MUL2 = 5'd15, MUL3 = 5'd16;
 
 reg   [SIZE-1:0]          state        ;// Seq part of the FSM
 
@@ -196,6 +198,8 @@ begin : OUTPUT_LOGIC
             bs <= ~reg2_s;
             operation <= (reg1_s == reg2_s) ? 1 : 0;
             state <= ADD0;
+          end else if (mul == 1'b1) begin
+            state <= MUL0;
           end
       end
       ADD0: begin
@@ -381,7 +385,7 @@ begin : OUTPUT_LOGIC
         state <= ZEROCHECK;
       end
       ZEROCHECK: begin
-        if( |res_m != 1'b1) begin
+        if( |res_m != 1'b1 || zero_flag == 1'b1) begin
             zero_flag <= 1;
             res_e <= 7'b1000000;
             res_m <= 15'b100000000000000;
@@ -394,6 +398,66 @@ begin : OUTPUT_LOGIC
             res_m <= 15'b100000000000000;
         end
         state <= ALU_IDLE;
+      end
+      MUL0: begin
+        idle <= 0;
+        alu8_a <= 0;
+        alu8_b <= 0;
+        alu8_cin <= 0;
+        if(reg1_s != reg2_s) begin
+            res_s <= 0;
+        end else begin
+            res_s <= 1;
+        end
+        if (reg1_e == 7'b0111111 || reg2_e == 7'b0111111) begin
+            inf <= 1;
+        end
+        if (reg1_e == 7'b1000000 || reg2_e == 7'b1000000) begin
+            zero_flag <= 1;
+        end else begin
+            zero_flag <= 0;
+        end
+        overflow_flag <= 0;
+        underflow_flag <= 0;
+        state <= MUL1;
+      end
+      MUL1: begin
+        if(alu8_out[3:0] == 4'd14) begin
+            state <= MUL2;
+        end else begin
+            state <= MUL1;
+        end
+        alu_a <= alu8_out[3:0] == 4'd0 ? reg1_m : {1'b0,alu_out[16:1]};
+        alu_b <= reg1_m[alu8_out[3:0]] == 1'b1 ? reg2_m : 16'b0;
+        alu_cin <= 0;
+        alu8_a <= alu8_out;
+        alu8_b <= 1;
+      end
+      MUL2: begin
+        if(alu_out[15] == 1'b1) begin
+            res_m <= alu_out[15:1];
+            alu8_cin <= 1;
+        end else begin
+            res_m <= alu_out[14:0];
+            alu8_cin <= 0;
+        end
+        alu8_a <= {1'b0,reg1_e};
+        alu8_b <= {1'b0,reg2_e};
+        state <= MUL3;
+      end
+      MUL3: begin
+        if(alu8_out[7] != alu8_u) begin
+            if(alu8_out[7] == 1'b0 && alu8_u == 1'b1) begin
+                overflow_flag <= 1;
+            end else if(alu8_out[7] == 1'b1 && alu8_u == 1'b0) begin
+                underflow_flag <= 1;
+            end
+        end
+        if (alu8_out[6:0] == 7'b0111111) begin
+            inf <= 1;
+        end
+        res_e <= alu8_out[6:0];
+        state <= ZEROCHECK;
       end
       default: begin
         state <= ALU_IDLE;

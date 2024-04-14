@@ -85,12 +85,13 @@ wire [14:0] rsm;
 
 localparam CTRL_SIZE = 4;
 localparam CTRL_IDLE  = 4'd0,CTRL_SETR1 = 4'd1,CTRL_SETR2 = 4'd2,CTRL_READR1 = 4'd3,CTRL_READR2 = 4'd4,CTRL_READRS = 4'd5,CTRL_ADD=4'd6,CTRL_SUB=4'd7,CTRL_WAIT=4'd8,
-CTRL_READSTAT=4'd9;
+CTRL_READSTAT=4'd9, CTRL_MUL=4'd10;
 
 reg   [CTRL_SIZE-1:0]          state        ;// Seq part of the FSM
 reg [2:0] cnt;
 reg add;
 reg sub;
+reg mul;
 
 wire fpu_idle;
 wire [2:0] flags;
@@ -99,6 +100,7 @@ fpu fpu_inst(
     .reset(reset),
     .add(add),
     .sub(sub),
+    .mul(mul),
     .reg1_s(r1s),
     .reg1_e(r1e),
     .reg1_m(r1m),
@@ -128,6 +130,7 @@ begin : OUTPUT_LOGIC
     cnt <= 0;
     add <= 0;
     sub <= 0;
+    mul <= 0;
     state <= CTRL_IDLE;
   end else begin
       case(state)
@@ -147,6 +150,7 @@ begin : OUTPUT_LOGIC
                     8'b10010000: state <= CTRL_READRS;
                     8'b10100000: state <= CTRL_ADD;
                     8'b11000000: state <= CTRL_SUB;
+                    8'b11000001: state <= CTRL_MUL;
                     default: state <= CTRL_IDLE;
                 endcase
             end
@@ -265,7 +269,12 @@ begin : OUTPUT_LOGIC
         sub <= 1;
         state <= CTRL_WAIT;
       end
+      CTRL_MUL: begin
+        mul <= 1;
+        state <= CTRL_WAIT;
+      end
       CTRL_WAIT: begin
+        mul <= 0;
         add <= 0;
         sub <= 0;
         if(fpu_idle == 1'b1) begin
