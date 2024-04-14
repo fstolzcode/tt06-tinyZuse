@@ -22,7 +22,8 @@ module alu_8bit (
     input [7:0] b,
     input c_in,
     output [7:0] out,
-    output u
+    output of,
+    output uf
 );
     wire [7:0] c;
     assign out[0] = a[0] ^ b[0] ^ c_in;
@@ -32,7 +33,9 @@ module alu_8bit (
       assign out[i] = a[i] ^ b[i] ^ c[i-1];
       assign c[i] = (a[i] & b[i]) | (a[i] & c[i-1]) | (b[i] & c[i-1]);
     end
-    assign u = c[5];
+    //assign u = c[5];
+    assign of = ((out[7] == 1'b0) && (c[5] == 1'b1)) ? 1 : 0;
+    assign uf = ((out[7] == 1'b1 && c[5] == 1'b0)) ? 1 : 0;
     endgenerate
 endmodule
 
@@ -84,6 +87,23 @@ module shifter_17bit (
 end
 endmodule
 
+module inf_checker (
+    input [6:0] e1,
+    input [6:0] e2,
+    input [6:0] e3,
+    output inf
+);
+    assign inf = ((e1 == 7'b0111111) || (e2 == 7'b0111111) || (e3 == 7'b0111111)) ? 1 : 0;
+endmodule 
+
+module zero_checker (
+    input [6:0] e1,
+    input [6:0] e2,
+    output zero
+);
+    assign zero = ((e1 == 7'b0) || (e2 == 7'b0)) ? 1 : 0;
+endmodule 
+
 module fpu(
     input wire clk,
     input wire reset,
@@ -132,13 +152,16 @@ reg [7:0] alu8_a;
 reg [7:0] alu8_b;
 reg alu8_cin;
 wire [7:0] alu8_out;
-wire alu8_u;
+//wire alu8_u;
+wire alu8_of;
+wire alu8_uf;
 alu_8bit alu8(
     .a(alu8_a),
     .b(alu8_b),
     .c_in(alu8_cin),
     .out(alu8_out),
-    .u(alu8_u)
+    .of(alu8_of),
+    .uf(alu8_uf)
 );
 
 reg [16:0] shifter_in;
@@ -160,6 +183,20 @@ reg[16:0] ba;
 reg operation;
 reg bs;
 
+wire inf_check;
+inf_checker inf_inst(
+    .e1(reg1_e),
+    .e2(reg2_e),
+    .e3(alu8_out[6:0]),
+    .inf(inf_check)
+);
+
+wire zero_check;
+zero_checker zero_inst(
+    .e1(reg1_e),
+    .e2(reg2_e),
+    .zero(zero_check)
+);
 reg inf;
 
 always @ (posedge clk)
@@ -207,9 +244,7 @@ begin : OUTPUT_LOGIC
           end
       end
       ADD0: begin
-          if (reg1_e == 7'b0111111 || reg2_e == 7'b0111111) begin
-            inf <= 1;
-          end
+          inf <= inf | inf_check;
           zero_flag <= 0;
           overflow_flag <= 0;
           underflow_flag <= 0;
@@ -220,16 +255,9 @@ begin : OUTPUT_LOGIC
           state <= ADD1;
           end
       ADD1: begin
-         if(alu8_out[7] != alu8_u) begin
-            if(alu8_out[7] == 1'b0 && alu8_u == 1'b1) begin
-                overflow_flag <= 1;
-            end else if(alu8_out[7] == 1'b1 && alu8_u == 1'b0) begin
-                underflow_flag <= 1;
-            end
-         end
-         if (alu8_out[6:0] == 7'b0111111) begin
-            inf <= 1;
-        end
+         overflow_flag <= overflow_flag | alu8_of;
+         underflow_flag <= underflow_flag | alu8_uf;
+         inf <= inf | inf_check;
          if(alu8_out[6] == 1'b0) begin
                 $display("POSITIVE");
                 // POSITIVE
@@ -283,9 +311,7 @@ begin : OUTPUT_LOGIC
         state <= ADD4;
       end
       ADD4: begin
-        if (alu8_out[6:0] == 7'b0111111) begin
-            inf <= 1;
-        end
+        inf <= inf | inf_check;
         res_e <= alu8_out[6:0];
         state <= ZEROCHECK;
       end
@@ -318,9 +344,7 @@ begin : OUTPUT_LOGIC
          state <= SUB2;
       end
       SUB2: begin
-        if (alu8_out[6:0] == 7'b0111111) begin
-            inf <= 1;
-        end
+        inf <= inf | inf_check;
         alu8_a <= {1'b0,alu8_out[6:0]};
         alu8_cin <= 1;
         shifter_in <= alu_out;
@@ -374,16 +398,9 @@ begin : OUTPUT_LOGIC
                 state <= SUB3;
       end
       SUB3: begin
-        if(alu8_out[7] != alu8_u) begin
-            if(alu8_out[7] == 1'b0 && alu8_u == 1'b1) begin
-                overflow_flag <= 1;
-            end else if(alu8_out[7] == 1'b1 && alu8_u == 1'b0) begin
-                underflow_flag <= 1;
-            end
-        end
-        if (alu8_out[6:0] == 7'b0111111) begin
-            inf <= 1;
-        end
+        overflow_flag <= overflow_flag | alu8_of;
+        underflow_flag <= underflow_flag | alu8_uf;
+        inf <= inf | inf_check;
         res_e <= alu8_out[6:0];
         res_m <= shifter_out[14:0];
         state <= ZEROCHECK;
@@ -416,14 +433,8 @@ begin : OUTPUT_LOGIC
         end else begin
             res_s <= 1;
         end
-        if (reg1_e == 7'b0111111 || reg2_e == 7'b0111111) begin
-            inf <= 1;
-        end
-        if (reg1_e == 7'b1000000 || reg2_e == 7'b1000000) begin
-            zero_flag <= 1;
-        end else begin
-            zero_flag <= 0;
-        end
+        inf <= inf | inf_check;
+        zero_flag <= zero_check;
         overflow_flag <= 0;
         underflow_flag <= 0;
         state <= MUL1;
@@ -453,16 +464,9 @@ begin : OUTPUT_LOGIC
         state <= MUL3;
       end
       MUL3: begin
-        if(alu8_out[7] != alu8_u) begin
-            if(alu8_out[7] == 1'b0 && alu8_u == 1'b1) begin
-                overflow_flag <= 1;
-            end else if(alu8_out[7] == 1'b1 && alu8_u == 1'b0) begin
-                underflow_flag <= 1;
-            end
-        end
-        if (alu8_out[6:0] == 7'b0111111) begin
-            inf <= 1;
-        end
+        overflow_flag <= overflow_flag | alu8_of;
+        underflow_flag <= underflow_flag | alu8_uf;
+        inf <= inf | inf_check;
         res_e <= alu8_out[6:0];
         state <= ZEROCHECK;
       end
@@ -472,14 +476,8 @@ begin : OUTPUT_LOGIC
         end else begin
             res_s <= 1;
         end
-        if (reg1_e == 7'b0111111 || reg2_e == 7'b0111111) begin
-            inf <= 1;
-        end
-        if (reg1_e == 7'b1000000 || reg2_e == 7'b1000000) begin
-            zero_flag <= 1;
-        end else begin
-            zero_flag <= 0;
-        end
+        inf <= inf | inf_check;
+        zero_flag <= zero_check;
         idle <= 0;
         alu8_a <= 8'd14;
         alu8_b <= 0;
@@ -510,6 +508,7 @@ begin : OUTPUT_LOGIC
          
       end
       DIV2: begin
+        inf <= inf | inf_check;
         if(res_m[14] != 1'b1) begin
             res_m <= {res_m[13:0], 1'b0};
             alu8_a <= alu8_out;
@@ -519,6 +518,7 @@ begin : OUTPUT_LOGIC
         state <= DIV3;
       end
       DIV3: begin
+         inf <= inf | inf_check;
          res_e <= alu8_out[6:0];
          state <= ZEROCHECK;
       end
