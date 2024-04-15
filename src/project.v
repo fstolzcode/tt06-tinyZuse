@@ -85,7 +85,7 @@ wire [14:0] rsm;
 
 localparam CTRL_SIZE = 4;
 localparam CTRL_IDLE  = 4'd0,CTRL_SETR1 = 4'd1,CTRL_SETR2 = 4'd2,CTRL_READR1 = 4'd3,CTRL_READR2 = 4'd4,CTRL_READRS = 4'd5,CTRL_ADD=4'd6,CTRL_SUB=4'd7,CTRL_WAIT=4'd8,
-CTRL_READSTAT=4'd9, CTRL_MUL=4'd10, CTRL_DIV=4'd11;
+CTRL_READSTAT=4'd9, CTRL_MUL=4'd10, CTRL_DIV=4'd11, CTRL_SQRT=4'd12;
 
 reg   [CTRL_SIZE-1:0]          state        ;// Seq part of the FSM
 reg [2:0] cnt;
@@ -93,6 +93,7 @@ reg add;
 reg sub;
 reg mul;
 reg div;
+reg sqrt;
 
 wire fpu_idle;
 wire [2:0] flags;
@@ -103,6 +104,7 @@ fpu fpu_inst(
     .sub(sub),
     .mul(mul),
     .div(div),
+    .sqrt(sqrt),
     .reg1_s(r1s),
     .reg1_e(r1e),
     .reg1_m(r1m),
@@ -134,6 +136,7 @@ begin : OUTPUT_LOGIC
     sub <= 0;
     mul <= 0;
     div <= 0;
+    sqrt <= 0;
     state <= CTRL_IDLE;
   end else begin
       case(state)
@@ -155,6 +158,7 @@ begin : OUTPUT_LOGIC
                     8'b11000000: state <= CTRL_SUB;
                     8'b11000001: state <= CTRL_MUL;
                     8'b11000010: state <= CTRL_DIV;
+                    8'b11000011: state <= CTRL_SQRT;
                     default: state <= CTRL_IDLE;
                 endcase
             end
@@ -279,6 +283,10 @@ begin : OUTPUT_LOGIC
       end
       CTRL_DIV: begin
         div <= 1;
+        state <= CTRL_WAIT;
+      end
+      CTRL_SQRT: begin
+        sqrt <= 1;
         state <= CTRL_WAIT;
       end
       CTRL_WAIT: begin

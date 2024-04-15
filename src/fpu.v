@@ -40,16 +40,16 @@ module alu_8bit (
 endmodule
 
 module alu_17bit (
-    input [16:0] a,
-    input [16:0] b,
+    input [17:0] a,
+    input [17:0] b,
     input c_in,
-    output [16:0] out
+    output [17:0] out
 );
-    wire [16:0] c;
+    wire [17:0] c;
     assign out[0] = a[0] ^ b[0] ^ c_in;
     assign c[0] = (a[0] & b[0]) | (a[0] & c_in) | (b[0] & c_in);
     genvar i;
-    generate for(i = 1; i < 17; i = i + 1) begin
+    generate for(i = 1; i < 18; i = i + 1) begin
       assign out[i] = a[i] ^ b[i] ^ c[i-1];
       assign c[i] = (a[i] & b[i]) | (a[i] & c[i-1]) | (b[i] & c[i-1]);
     end
@@ -111,6 +111,7 @@ module fpu(
     input wire sub,
     input wire mul,
     input wire div,
+    input wire sqrt,
     input wire reg1_s,
     input [6:0] reg1_e,
     input [14:0] reg1_m,
@@ -132,14 +133,15 @@ ADD0 = 5'd1,ADD1 = 5'd2,ADD2 = 5'd3,ADD3 = 5'd4,ADD4 = 5'd5,
 ADD5 = 5'd6, SUB0=5'd7, SUB1 = 5'd8, SUB2=5'd9, SUB3=5'd10, 
 ZEROCHECK = 5'd11, INFCHECK = 5'd12,
 MUL0 = 5'd13, MUL1 = 5'd14, MUL2 = 5'd15, MUL3 = 5'd16,
-DIV0 = 5'd17, DIV1 = 5'd18, DIV2 = 5'd19, DIV3 = 5'd20;
+DIV0 = 5'd17, DIV1 = 5'd18, DIV2 = 5'd19, DIV3 = 5'd20,
+SQRT0 = 5'd21, SQRT1 = 5'd22, SQRT2 = 5'd23, SQRT3 = 5'd24;
 
 reg   [SIZE-1:0]          state        ;// Seq part of the FSM
 
-reg [16:0] alu_a;
-reg [16:0] alu_b;
+reg [17:0] alu_a;
+reg [17:0] alu_b;
 reg alu_cin;
-wire [16:0] alu_out;
+wire [17:0] alu_out;
 alu_17bit alu(
     .a(alu_a),
     .b(alu_b),
@@ -178,7 +180,7 @@ shifter_17bit shifter(
 reg[7:0] aa;
 reg[7:0] ab;
 
-reg[16:0] ba;
+reg[17:0] ba;
 
 reg operation;
 reg bs;
@@ -241,7 +243,9 @@ begin : OUTPUT_LOGIC
             state <= MUL0;
           end else if (div == 1'b1) begin
             state <= DIV0;
-          end
+          end else if (sqrt == 1'b1) begin
+            state <= SQRT0;
+          end 
       end
       ADD0: begin
           inf <= inf | inf_check;
@@ -266,7 +270,7 @@ begin : OUTPUT_LOGIC
                 
                 res_s <= reg1_s;
                 
-                ba <= {2'b0,reg1_m};
+                ba <= {3'b0,reg1_m};
                 shifter_in <= {2'b0,reg2_m};
                 shifter_amount <= {1'b0,alu8_out[6:0]};
                 shifter_left <= 0;
@@ -279,7 +283,7 @@ begin : OUTPUT_LOGIC
                 
                 res_s <= bs;
                 
-                ba <= {2'b0,reg2_m};
+                ba <= {3'b0,reg2_m};
                 alu8_a <= ~alu8_out;
                 alu8_b <= 1;
                 alu8_cin <= 0;
@@ -295,7 +299,7 @@ begin : OUTPUT_LOGIC
       ADD3: begin
         alu8_a <= aa;
         alu8_b <= ab;
-        if (alu_out[16] == 1'b1) begin
+        if (alu_out[17] == 1'b1) begin
             $display("B NEGATIVE SIGN");
             res_s <= ~res_s;
         end 
@@ -347,7 +351,7 @@ begin : OUTPUT_LOGIC
         inf <= inf | inf_check;
         alu8_a <= {1'b0,alu8_out[6:0]};
         alu8_cin <= 1;
-        shifter_in <= alu_out;
+        shifter_in <= alu_out[16:0];
         shifter_left <= 1;
         if(alu_out[14] == 1'b1) begin
                alu8_b <= {1'b0,~7'd0};
@@ -445,8 +449,8 @@ begin : OUTPUT_LOGIC
         end else begin
             state <= MUL1;
         end
-        alu_a <= {1'b0,alu_out[16:1]};
-        alu_b <= reg1_m[alu8_out[3:0]] == 1'b1 ? {2'b0, reg2_m} : 17'b0;
+        alu_a <= {2'b0,alu_out[16:1]};
+        alu_b <= reg1_m[alu8_out[3:0]] == 1'b1 ? {3'b0, reg2_m} : 18'b0;
         alu_cin <= 0;
         alu8_a <= alu8_out;
         alu8_b <= 1;
@@ -483,8 +487,8 @@ begin : OUTPUT_LOGIC
         alu8_b <= 0;
         alu8_cin <= 0;
         ba <= {2'b00, reg1_m};
-        alu_a <= {2'b00, reg1_m};
-        alu_b <= {2'b11, ~reg2_m};
+        alu_a <= {3'b000, reg1_m};
+        alu_b <= {3'b111, ~reg2_m};
         alu_cin <= 1;
         overflow_flag <= 0;
         underflow_flag <= 0;
@@ -502,9 +506,9 @@ begin : OUTPUT_LOGIC
             alu8_cin <= 1;
             state <= DIV1;
         end
-         alu_a <=  (alu_out[16] == 1'b0) ? {alu_out[15:0],1'b0} : {ba[15:0],1'b0};
-         ba <= (alu_out[16] == 1'b0) ? {alu_out[15:0],1'b0} : {ba[15:0],1'b0};
-         res_m[alu8_out[3:0]] <= (alu_out[16] == 1'b0) ? 1 : 0;
+         alu_a <=  (alu_out[17] == 1'b0) ? {alu_out[16:0],1'b0} : {ba[16:0],1'b0};
+         ba <= (alu_out[17] == 1'b0) ? {alu_out[16:0],1'b0} : {ba[16:0],1'b0};
+         res_m[alu8_out[3:0]] <= (alu_out[17] == 1'b0) ? 1 : 0;
          
       end
       DIV2: begin
@@ -521,6 +525,40 @@ begin : OUTPUT_LOGIC
          inf <= inf | inf_check;
          res_e <= alu8_out[6:0];
          state <= ZEROCHECK;
+      end
+      SQRT0: begin
+        alu8_a <= 8'd14;
+        alu8_b <= 0;
+        alu8_cin <= 0;
+        alu_a <= (reg1_e[0] == 1'b1) ? {2'b0,reg1_m,1'b0} : reg1_m;
+        ba <= (reg1_e[0] == 1'b1) ? {2'b0,reg1_m,1'b0} : reg1_m;
+        alu_b <= ~18'b000100000000000000;
+        alu_cin <= 1;
+        res_m <= 0;
+        shifter_in <= 17'b00100000000000000;
+        shifter_left <= 0;
+        shifter_amount <= 8'd1;
+        state <= SQRT1;
+      end
+      SQRT1: begin
+         if(alu8_out[3:0] == 4'd0) begin
+            state <= SQRT2;
+        end else begin
+            alu8_a <= alu8_out;
+            alu8_b <= 8'b11111110;
+            alu8_cin <= 1;
+            state <= SQRT1;
+        end
+        alu_a <= (alu_out[17] == 1'b0) ? {alu_out[16:0],1'b0} : {ba[16:0],1'b0};
+        ba <= (alu_out[17] == 1'b0) ? {alu_out[16:0],1'b0} : {ba[16:0],1'b0};
+        res_m[alu8_out[3:0]] <= (alu_out[17] == 1'b0) ? 1 : 0;
+        alu_b <= ~( {2'b0, {(alu_out[17] == 1'b0) ? (res_m |  {shifter_out[13:0],1'b0} ) : res_m} ,1'b0} | {1'b0,shifter_out});
+        shifter_in <= shifter_out;
+      end
+      SQRT2: begin
+        res_s <= 1;
+        res_e <= {1'b0,reg1_e[6:1]};
+        state <= ZEROCHECK;
       end
       default: begin
         state <= ALU_IDLE;
