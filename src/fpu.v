@@ -524,6 +524,11 @@ begin : OUTPUT_LOGIC
          state <= ZEROCHECK;
       end
       SQRT0: begin
+        inf <= inf | inf_check;
+        zero_flag <= zero_check;
+        overflow_flag <= 0;
+        underflow_flag <= 0;
+        
         alu8_a <= 8'd14;
         alu8_b <= 0;
         alu8_cin <= 0;

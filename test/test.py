@@ -7,7 +7,7 @@ from cocotb.triggers import ClockCycles
 from cocotbext.uart import UartSource, UartSink
 
 @cocotb.test()
-async def test_adder(dut):
+async def test_setreadr1(dut):
   dut._log.info("Start")
   
   # Our example module doesn't use clock and reset, but we show how to use them here anyway.
@@ -23,14 +23,42 @@ async def test_adder(dut):
   await ClockCycles(dut.clk, 10)
   dut.rst_n.value = 1
   await ClockCycles(dut.clk, 10)
-  await uart_source.write(b'\x81\x82\x70\x00\x82\x85\x55\x80\xA0')
+  await uart_source.write(b'\x82\x85\xab\x00')
   await uart_source.wait()
   await ClockCycles(dut.clk, 100)
-  await uart_source.write(b'\x90')
+  await uart_source.write(b'\x85')
   await uart_source.wait()
   data = await uart_sink.read()
   data += await uart_sink.read()
   data += await uart_sink.read()
 
-  assert data == bytearray(b'\x85c\x80')
+  assert data == bytearray(b'\x85\xab\x00')
+
+@cocotb.test()
+async def test_setreadr2(dut):
+  dut._log.info("Start")
+  
+  # Our example module doesn't use clock and reset, but we show how to use them here anyway.
+  clock = Clock(dut.clk, 100, units="ns")
+  cocotb.start_soon(clock.start())
+
+  uart_source = UartSource(dut.rx, baud=9600, bits=8)
+  uart_sink = UartSink(dut.tx, baud=9600, bits=8)
+  # Reset
+  dut._log.info("Reset")
+  dut.ena.value = 1
+  dut.rst_n.value = 0
+  await ClockCycles(dut.clk, 10)
+  dut.rst_n.value = 1
+  await ClockCycles(dut.clk, 10)
+  await uart_source.write(b'\x83\x82\xe0\x00')
+  await uart_source.wait()
+  await ClockCycles(dut.clk, 100)
+  await uart_source.write(b'\x86')
+  await uart_source.wait()
+  data = await uart_sink.read()
+  data += await uart_sink.read()
+  data += await uart_sink.read()
+
+  assert data == bytearray(b'\x82\xe0\x00')
  
