@@ -146,19 +146,22 @@ begin : OUTPUT_LOGIC
             cnt <= 0;
             add <= 0;
             sub <= 0;
+            mul <= 0;
+            div <= 0;
+            sqrt <= 0;
             if(uart_rx_valid == 1'b1) begin
                 case(uart_rx_data)
-                    8'b10000000: state <= CTRL_READSTAT;
-                    8'b10000001: state <= CTRL_SETR1;
-                    8'b10000010: state <= CTRL_SETR2;
-                    8'b10000100: state <= CTRL_READR1;
-                    8'b10001000: state <= CTRL_READR2;
-                    8'b10010000: state <= CTRL_READRS;
-                    8'b10100000: state <= CTRL_ADD;
-                    8'b11000000: state <= CTRL_SUB;
-                    8'b11000001: state <= CTRL_MUL;
-                    8'b11000010: state <= CTRL_DIV;
-                    8'b11000011: state <= CTRL_SQRT;
+                    8'b10000010: state <= CTRL_SETR1;
+                    8'b10000011: state <= CTRL_SETR2;
+                    8'b10000100: state <= CTRL_READSTAT;
+                    8'b10000101: state <= CTRL_READR1;
+                    8'b10000110: state <= CTRL_READR2;
+                    8'b10000111: state <= CTRL_READRS;
+                    8'b10001000: state <= CTRL_ADD;
+                    8'b10001001: state <= CTRL_SUB;
+                    8'b10001010: state <= CTRL_MUL;
+                    8'b10001011: state <= CTRL_DIV;
+                    8'b10001100: state <= CTRL_SQRT;
                     default: state <= CTRL_IDLE;
                 endcase
             end

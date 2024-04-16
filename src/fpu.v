@@ -39,7 +39,7 @@ module alu_8bit (
     endgenerate
 endmodule
 
-module alu_17bit (
+module alu_18bit (
     input [17:0] a,
     input [17:0] b,
     input c_in,
@@ -101,7 +101,7 @@ module zero_checker (
     input [6:0] e2,
     output zero
 );
-    assign zero = ((e1 == 7'b0) || (e2 == 7'b0)) ? 1 : 0;
+    assign zero = ((e1 == 7'b1000000) || (e2 == 7'b1000000)) ? 1 : 0;
 endmodule 
 
 module fpu(
@@ -134,7 +134,7 @@ ADD5 = 5'd6, SUB0=5'd7, SUB1 = 5'd8, SUB2=5'd9, SUB3=5'd10,
 ZEROCHECK = 5'd11, INFCHECK = 5'd12,
 MUL0 = 5'd13, MUL1 = 5'd14, MUL2 = 5'd15, MUL3 = 5'd16,
 DIV0 = 5'd17, DIV1 = 5'd18, DIV2 = 5'd19, DIV3 = 5'd20,
-SQRT0 = 5'd21, SQRT1 = 5'd22, SQRT2 = 5'd23, SQRT3 = 5'd24;
+SQRT0 = 5'd21, SQRT1 = 5'd22, SQRT2 = 5'd23;
 
 reg   [SIZE-1:0]          state        ;// Seq part of the FSM
 
@@ -142,7 +142,7 @@ reg [17:0] alu_a;
 reg [17:0] alu_b;
 reg alu_cin;
 wire [17:0] alu_out;
-alu_17bit alu(
+alu_18bit alu(
     .a(alu_a),
     .b(alu_b),
     .c_in(alu_cin),
@@ -231,6 +231,13 @@ begin : OUTPUT_LOGIC
       ALU_IDLE: begin
           idle <= 1;
           inf <= 0;
+          if (mul == 1'b1 || div == 1'b1) begin
+            if(reg1_s != reg2_s) begin
+                res_s <= 0;
+            end else begin
+                res_s <= 1;
+            end
+          end
           if(add == 1'b1) begin
             bs <= reg2_s;
             operation <= (reg1_s == reg2_s) ? 0 : 1;
@@ -292,7 +299,7 @@ begin : OUTPUT_LOGIC
       end
       ADD2: begin
         alu_a <= ba;
-        alu_b <= (operation == 1'b1) ? ~shifter_out : shifter_out;
+        alu_b <= (operation == 1'b1) ? {~shifter_out[16],~shifter_out} : {shifter_out[16],shifter_out};
         alu_cin <= operation;
         state <= (operation == 1'b1) ? SUB0 : ADD3;
       end
@@ -432,11 +439,6 @@ begin : OUTPUT_LOGIC
         alu_a <= 0;
         alu_b <= 0;
         alu_cin <= 0;
-        if(reg1_s != reg2_s) begin
-            res_s <= 0;
-        end else begin
-            res_s <= 1;
-        end
         inf <= inf | inf_check;
         zero_flag <= zero_check;
         overflow_flag <= 0;
@@ -475,18 +477,13 @@ begin : OUTPUT_LOGIC
         state <= ZEROCHECK;
       end
       DIV0: begin
-        if(reg1_s != reg2_s) begin
-            res_s <= 0;
-        end else begin
-            res_s <= 1;
-        end
         inf <= inf | inf_check;
         zero_flag <= zero_check;
         idle <= 0;
         alu8_a <= 8'd14;
         alu8_b <= 0;
         alu8_cin <= 0;
-        ba <= {2'b00, reg1_m};
+        ba <= {3'b00, reg1_m};
         alu_a <= {3'b000, reg1_m};
         alu_b <= {3'b111, ~reg2_m};
         alu_cin <= 1;
