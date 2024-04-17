@@ -297,6 +297,7 @@ begin : OUTPUT_LOGIC
         add <= 0;
         sub <= 0;
         div <= 0;
+        sqrt <= 0;
         if(fpu_idle == 1'b1) begin
             state <= CTRL_IDLE;
         end
