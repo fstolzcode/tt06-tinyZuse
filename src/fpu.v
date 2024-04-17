@@ -185,6 +185,8 @@ reg[17:0] ba;
 reg operation;
 reg bs;
 
+reg flag62;
+
 wire inf_check;
 inf_checker inf_inst(
     .e1(reg1_e),
@@ -215,6 +217,7 @@ begin : OUTPUT_LOGIC
     alu8_a <= 0;
     alu8_b <= 0;
     alu8_cin <= 0;
+    flag62 <= 0;
     alu_a <= 0;
     alu_b <= 0;
     alu_cin <= 0;
@@ -231,6 +234,7 @@ begin : OUTPUT_LOGIC
       ALU_IDLE: begin
           idle <= 1;
           inf <= 0;
+          flag62 <= 0;
           if (mul == 1'b1 || div == 1'b1) begin
             if(reg1_s != reg2_s) begin
                 res_s <= 0;
@@ -274,6 +278,7 @@ begin : OUTPUT_LOGIC
                 // POSITIVE
                 ab <= 0;
                 aa <= { 1'b0,reg1_e};
+                flag62 <= (reg1_e == 7'b0111110 ) ? 1 : 0;
                 
                 res_s <= reg1_s;
                 
@@ -287,6 +292,7 @@ begin : OUTPUT_LOGIC
                 // NEGATIVE
                 aa <= 0;
                 ab <= { 1'b0,reg2_e};
+                flag62 <= (reg2_e == 7'b0111110 ) ? 1 : 0;
                 
                 res_s <= bs;
                 
@@ -318,10 +324,13 @@ begin : OUTPUT_LOGIC
             $display("BE<2");
             res_m <= alu_out[14:0];
             alu8_cin <= 0;
+            flag62 <= 0;
         end
         state <= ADD4;
       end
       ADD4: begin
+        overflow_flag <= overflow_flag | alu8_of | (alu8_out[7] & flag62);
+        underflow_flag <= underflow_flag | alu8_uf;
         inf <= inf | inf_check;
         res_e <= alu8_out[6:0];
         state <= ZEROCHECK;
@@ -477,8 +486,8 @@ begin : OUTPUT_LOGIC
         state <= ZEROCHECK;
       end
       DIV0: begin
-        inf <= inf | inf_check;
-        zero_flag <= zero_check;
+        inf <= inf | zero_check;
+        zero_flag <= inf_check;
         idle <= 0;
         alu8_a <= 8'd14;
         alu8_b <= 0;

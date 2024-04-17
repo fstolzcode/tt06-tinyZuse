@@ -950,4 +950,192 @@ async def test_alu00r(dut):
   data = await uart_sink.read()
   assert data == bytearray(b'\x00')
 
+##############
+# Test combinations for special values
+##############
+
+@cocotb.test()
+async def test_zerohandling(dut):
+  # Our example module doesn't use clock and reset, but we show how to use them here anyway.
+  clock = Clock(dut.clk, 100, units="ns")
+  cocotb.start_soon(clock.start())
+
+  uart_source = UartSource(dut.rx, baud=9600, bits=8)
+  uart_sink = UartSink(dut.tx, baud=9600, bits=8)
+  # Reset
+  dut._log.info("Reset")
+  dut.ena.value = 1
+  dut.rst_n.value = 0
+  await ClockCycles(dut.clk, 10)
+  dut.rst_n.value = 1
+  await ClockCycles(dut.clk, 10)
+  dut._log.info("Start")
+
+  dut._log.info("Testing 42.75 - 42.75")
+  await uart_source.write(b'\x82\x85\xab\x00\x83\x85\xab\x00') #R1 = 42.75, R2 = 42.75
+  await uart_source.wait()
+  await uart_source.write(b'\x89') # SUB
+  await uart_source.wait()
+  await ClockCycles(dut.clk, 100)
+  await uart_source.write(b'\x87')
+  await uart_source.wait()
+  data = await uart_sink.read()
+  data += await uart_sink.read()
+  data += await uart_sink.read()
+  assert data == bytearray(b'\xc0\x80\x00')
+
+  await uart_source.write(b'\x84')
+  await uart_source.wait()
+  data = await uart_sink.read()
+  assert data == bytearray(b'\x01')
+
+  dut._log.info("Testing 42.75 * 0")
+  await uart_source.write(b'\x82\x85\xab\x00\x83\xc0\x80\x00') #R1 = 42.75, R2 = 0
+  await uart_source.wait()
+
+  await uart_source.write(b'\x8A') # MUL
+  await uart_source.wait()
+  await ClockCycles(dut.clk, 100)
+  await uart_source.write(b'\x87')
+  await uart_source.wait()
+  data = await uart_sink.read()
+  data += await uart_sink.read()
+  data += await uart_sink.read()
+  
+  assert data == bytearray(b'\xc0\x80\x00')
+
+  await uart_source.write(b'\x84')
+  await uart_source.wait()
+  data = await uart_sink.read()
+  assert data == bytearray(b'\x01')
+
+  dut._log.info("Testing 42.75 / 0")
+
+  await uart_source.write(b'\x8B') # DIV
+  await uart_source.wait()
+  await ClockCycles(dut.clk, 100)
+  await uart_source.write(b'\x87')
+  await uart_source.wait()
+  data = await uart_sink.read()
+  data += await uart_sink.read()
+  data += await uart_sink.read()
+  
+  assert data == bytearray(b'\xbf\x80\x00')
+
+  await uart_source.write(b'\x84')
+  await uart_source.wait()
+  data = await uart_sink.read()
+  assert data == bytearray(b'\x00')
+
 #############################
+
+@cocotb.test()
+async def test_infhandling(dut):
+  # Our example module doesn't use clock and reset, but we show how to use them here anyway.
+  clock = Clock(dut.clk, 100, units="ns")
+  cocotb.start_soon(clock.start())
+
+  uart_source = UartSource(dut.rx, baud=9600, bits=8)
+  uart_sink = UartSink(dut.tx, baud=9600, bits=8)
+  # Reset
+  dut._log.info("Reset")
+  dut.ena.value = 1
+  dut.rst_n.value = 0
+  await ClockCycles(dut.clk, 10)
+  dut.rst_n.value = 1
+  await ClockCycles(dut.clk, 10)
+  dut._log.info("Start")
+
+  dut._log.info("Testing 42.75 - inf")
+  await uart_source.write(b'\x82\x85\xab\x00\x83\xbf\xab\x00') #R1 = 42.75, R2 = inf
+  await uart_source.wait()
+  await uart_source.write(b'\x89') # SUB
+  await uart_source.wait()
+  await ClockCycles(dut.clk, 100)
+  await uart_source.write(b'\x87')
+  await uart_source.wait()
+  data = await uart_sink.read()
+  data += await uart_sink.read()
+  data += await uart_sink.read()
+  assert data == bytearray(b'\x3f\x80\x00')
+
+  await uart_source.write(b'\x84')
+  await uart_source.wait()
+  data = await uart_sink.read()
+  assert data == bytearray(b'\x00')
+
+  dut._log.info("Testing 42.75 * inf")
+  await uart_source.write(b'\x8A') # MUL
+  await uart_source.wait()
+  await ClockCycles(dut.clk, 100)
+  await uart_source.write(b'\x87')
+  await uart_source.wait()
+  data = await uart_sink.read()
+  data += await uart_sink.read()
+  data += await uart_sink.read()
+  
+  assert data == bytearray(b'\x3f\x80\x00')
+
+  await uart_source.write(b'\x84')
+  await uart_source.wait()
+  data = await uart_sink.read()
+  assert data == bytearray(b'\x00')
+
+  dut._log.info("Testing 42.75 / inf")
+
+  await uart_source.write(b'\x8B') # DIV
+  await uart_source.wait()
+  await ClockCycles(dut.clk, 100)
+  await uart_source.write(b'\x87')
+  await uart_source.wait()
+  data = await uart_sink.read()
+  data += await uart_sink.read()
+  data += await uart_sink.read()
+
+  assert data == bytearray(b'\xbf\x80\x00')
+
+  await uart_source.write(b'\x84')
+  await uart_source.wait()
+  data = await uart_sink.read()
+  assert data == bytearray(b'\x00')
+
+#############################
+
+@cocotb.test()
+async def test_overunderflow(dut):
+  # Our example module doesn't use clock and reset, but we show how to use them here anyway.
+  clock = Clock(dut.clk, 100, units="ns")
+  cocotb.start_soon(clock.start())
+
+  uart_source = UartSource(dut.rx, baud=9600, bits=8)
+  uart_sink = UartSink(dut.tx, baud=9600, bits=8)
+  # Reset
+  dut._log.info("Reset")
+  dut.ena.value = 1
+  dut.rst_n.value = 0
+  await ClockCycles(dut.clk, 10)
+  dut.rst_n.value = 1
+  await ClockCycles(dut.clk, 10)
+  dut._log.info("Start")
+
+  dut._log.info("Testing underflow")
+  await uart_source.write(b'\x82\xc2\xab\x00\x83\x85\xe0\x00') #R1 exp = - 62, R2 exp = 5
+  await uart_source.wait()
+  await uart_source.write(b'\x88') # ADD
+  await uart_source.wait()
+  await ClockCycles(dut.clk, 100)
+  await uart_source.write(b'\x84')
+  await uart_source.wait()
+  data = await uart_sink.read()
+  assert data == bytearray(b'\x04')
+
+  dut._log.info("Testing overflow (MUL)")
+  await uart_source.write(b'\x82\xbe\xab\x00\x83\x85\xff\xff') #R1 exp = + 62, R2 exp = 5
+  await uart_source.wait()
+  await uart_source.write(b'\x8A') # MUL
+  await uart_source.wait()
+  await ClockCycles(dut.clk, 100)
+  await uart_source.write(b'\x84')
+  await uart_source.wait()
+  data = await uart_sink.read()
+  assert data == bytearray(b'\x02')
