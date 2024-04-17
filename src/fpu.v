@@ -532,8 +532,8 @@ begin : OUTPUT_LOGIC
         alu8_a <= 8'd14;
         alu8_b <= 0;
         alu8_cin <= 0;
-        alu_a <= (reg1_e[0] == 1'b1) ? {2'b0,reg1_m,1'b0} : reg1_m;
-        ba <= (reg1_e[0] == 1'b1) ? {2'b0,reg1_m,1'b0} : reg1_m;
+        alu_a <= (reg1_e[0] == 1'b1) ? {2'b0,reg1_m,1'b0} : {3'b0,reg1_m};
+        ba <= (reg1_e[0] == 1'b1) ? {2'b0,reg1_m,1'b0} : {3'b0,reg1_m};
         alu_b <= ~18'b000100000000000000;
         alu_cin <= 1;
         res_m <= 0;
