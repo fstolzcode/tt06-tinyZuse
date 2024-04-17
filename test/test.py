@@ -1074,7 +1074,7 @@ async def test_infhandling(dut):
   data += await uart_sink.read()
   data += await uart_sink.read()
   
-  assert data == bytearray(b'\x3f\x80\x00')
+  assert data == bytearray(b'\xbf\x80\x00')
 
   await uart_source.write(b'\x84')
   await uart_source.wait()
