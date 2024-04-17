@@ -84,8 +84,8 @@ wire [6:0] rse;
 wire [14:0] rsm;
 
 localparam CTRL_SIZE = 4;
-localparam CTRL_IDLE  = 4'd0,CTRL_SETR1 = 4'd1,CTRL_SETR2 = 4'd2,CTRL_READR1 = 4'd3,CTRL_READR2 = 4'd4,CTRL_READRS = 4'd5,CTRL_ADD=4'd6,CTRL_SUB=4'd7,CTRL_WAIT=4'd8,
-CTRL_READSTAT=4'd9, CTRL_MUL=4'd10, CTRL_DIV=4'd11, CTRL_SQRT=4'd12;
+localparam CTRL_IDLE  = 4'd0,CTRL_SETR1 = 4'd1,CTRL_SETR2 = 4'd2,CTRL_READR1 = 4'd3,CTRL_READR2 = 4'd4,CTRL_READRS = 4'd5,CTRL_ADD=4'd6,CTRL_SUB=4'd7,CTRL_WAIT1=4'd8,
+CTRL_READSTAT=4'd9, CTRL_MUL=4'd10, CTRL_DIV=4'd11, CTRL_SQRT=4'd12, CTRL_WAIT2 = 4'd13;
 
 reg   [CTRL_SIZE-1:0]          state        ;// Seq part of the FSM
 reg [2:0] cnt;
@@ -274,30 +274,33 @@ begin : OUTPUT_LOGIC
       end
       CTRL_ADD: begin
         add <= 1;
-        state <= CTRL_WAIT;
+        state <= CTRL_WAIT1;
       end
       CTRL_SUB: begin
         sub <= 1;
-        state <= CTRL_WAIT;
+        state <= CTRL_WAIT1;
       end
       CTRL_MUL: begin
         mul <= 1;
-        state <= CTRL_WAIT;
+        state <= CTRL_WAIT1;
       end
       CTRL_DIV: begin
         div <= 1;
-        state <= CTRL_WAIT;
+        state <= CTRL_WAIT1;
       end
       CTRL_SQRT: begin
         sqrt <= 1;
-        state <= CTRL_WAIT;
+        state <= CTRL_WAIT1;
       end
-      CTRL_WAIT: begin
+      CTRL_WAIT1: begin
         mul <= 0;
         add <= 0;
         sub <= 0;
         div <= 0;
         sqrt <= 0;
+        state <= CTRL_WAIT2;
+      end
+      CTRL_WAIT2: begin
         if(fpu_idle == 1'b1) begin
             state <= CTRL_IDLE;
         end

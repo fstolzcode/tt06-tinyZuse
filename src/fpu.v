@@ -524,6 +524,7 @@ begin : OUTPUT_LOGIC
          state <= ZEROCHECK;
       end
       SQRT0: begin
+        idle <= 0;
         inf <= inf | inf_check;
         zero_flag <= zero_check;
         overflow_flag <= 0;
