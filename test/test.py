@@ -1079,7 +1079,7 @@ async def test_infhandling(dut):
   await uart_source.write(b'\x84')
   await uart_source.wait()
   data = await uart_sink.read()
-  assert data == bytearray(b'\x00')
+  assert data == bytearray(b'\x02')
 
   dut._log.info("Testing 42.75 / inf")
 
@@ -1097,7 +1097,7 @@ async def test_infhandling(dut):
   await uart_source.write(b'\x84')
   await uart_source.wait()
   data = await uart_sink.read()
-  assert data == bytearray(b'\x00')
+  assert data == bytearray(b'\x01')
 
 #############################
 
